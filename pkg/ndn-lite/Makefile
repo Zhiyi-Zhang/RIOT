@@ -1,5 +1,5 @@
-PKG_SOURCE_LOCAL ?= $(RIOTBASE)/../ndn_standalone
-PKG_BUILDDIR ?= $(PKGDIRBASE)/ndn_standalone
+PKG_SOURCE_LOCAL ?= $(RIOTBASE)/../ndn-lite
+PKG_BUILDDIR ?= $(PKGDIRBASE)/ndn-lite
 
 .PHONY: all
 
