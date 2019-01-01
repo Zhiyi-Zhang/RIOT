@@ -1,0 +1,10 @@
+INCLUDES += -I$(PKGDIRBASE)
+USEMODULE += ndn-encode
+USEMODULE += ndn-security
+USEMODULE += ndn-security-ndn-lite-default-back
+USEMODULE += ndn-security-sec-lib
+USEMODULE += ndn-security-micro-ecc
+USEMODULE += ndn-security-tinycrypt
+USEMODULE += ndn-forwarder
+USEMODULE += ndn-face
+USEMODULE += ndn-app-support
