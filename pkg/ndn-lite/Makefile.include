@@ -4,7 +4,6 @@ USEMODULE += ndn-app-support
 USEMODULE += ndn-face
 USEMODULE += ndn-forwarder
 USEMODULE += ndn-security
-USEMODULE += ndn-security-detail
 USEMODULE += ndn-security-detail-default-backend
 USEMODULE += ndn-security-micro-ecc
 USEMODULE += ndn-security-tinycrypt
