@@ -200,15 +200,13 @@ extern "C" {
 #include "iolist.h"
 #include "net/netopt.h"
 
-#ifdef MODULE_NETSTATS_L2
-#include "net/netstats.h"
-#endif
 #ifdef MODULE_L2FILTER
 #include "net/l2filter.h"
 #endif
 
 enum {
     NETDEV_TYPE_UNKNOWN,
+    NETDEV_TYPE_TEST,
     NETDEV_TYPE_RAW,
     NETDEV_TYPE_ETHERNET,
     NETDEV_TYPE_IEEE802154,
@@ -280,9 +278,6 @@ struct netdev {
     void* context;                          /**< ptr to network stack context */
 #ifdef MODULE_NETDEV_LAYER
     netdev_t *lower;                        /**< ptr to the lower netdev layer */
-#endif
-#ifdef MODULE_NETSTATS_L2
-    netstats_t stats;                       /**< transceiver's statistics */
 #endif
 #ifdef MODULE_L2FILTER
     l2filter_t filter[L2FILTER_LISTSIZE];   /**< link layer address filters */

@@ -29,6 +29,7 @@ endif
 ifneq (,$(filter gnrc_mac,$(USEMODULE)))
   USEMODULE += gnrc_priority_pktqueue
   USEMODULE += csma_sender
+  USEMODULE += evtimer
 endif
 
 ifneq (,$(filter gnrc_gomach,$(USEMODULE)))
@@ -154,7 +155,7 @@ ifneq (,$(filter gnrc_netif,$(USEMODULE)))
   endif
 endif
 
-ifneq (,$(filter ieee802154 nrfmin esp_now,$(USEMODULE)))
+ifneq (,$(filter ieee802154 nrfmin esp_now gnrc_sixloenc,$(USEMODULE)))
   ifneq (,$(filter gnrc_ipv6, $(USEMODULE)))
     USEMODULE += gnrc_sixlowpan
   endif
@@ -542,6 +543,10 @@ ifneq (,$(filter gnrc_pktbuf_%, $(USEMODULE)))
   USEMODULE += gnrc_pktbuf # make MODULE_GNRC_PKTBUF macro available for all implementations
 endif
 
+ifneq (,$(filter gnrc_netif_%,$(USEMODULE)))
+  USEMODULE += gnrc_netif
+endif
+
 ifneq (,$(filter netstats_%, $(USEMODULE)))
   USEMODULE += netstats
 endif
@@ -656,6 +661,10 @@ ifneq (,$(filter random,$(USEMODULE)))
     USEMODULE += hashes
   endif
 
+  ifeq (,$(filter puf_sram,$(USEMODULE)))
+    FEATURES_OPTIONAL += periph_hwrng
+  endif
+
   USEMODULE += luid
 endif
 
@@ -689,6 +698,7 @@ endif
 
 ifneq (,$(filter sock_dns,$(USEMODULE)))
   USEMODULE += sock_util
+  USEMODULE += posix
 endif
 
 ifneq (,$(filter sock_util,$(USEMODULE)))

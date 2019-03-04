@@ -145,10 +145,10 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
 #ifdef MODULE_NETSTATS_L2
     if ((netif_hdr->flags & GNRC_NETIF_HDR_FLAGS_BROADCAST) ||
         (netif_hdr->flags & GNRC_NETIF_HDR_FLAGS_MULTICAST)) {
-        dev->stats.tx_mcast_count++;
+        netif->stats.tx_mcast_count++;
     }
     else {
-        dev->stats.tx_unicast_count++;
+        netif->stats.tx_unicast_count++;
     }
 #endif
     res = dev->driver->send(dev, &iolist);
@@ -183,6 +183,10 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
             DEBUG("gnrc_netif_ethernet: read error.\n");
             goto safe_out;
         }
+#ifdef MODULE_NETSTATS_L2
+        netif->stats.rx_count++;
+        netif->stats.rx_bytes += nread;
+#endif
 
         if (nread < bytes_expected) {
             /* we've got less than the expected packet size,
@@ -226,7 +230,7 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
         gnrc_netif_hdr_init(netif_hdr->data, ETHERNET_ADDR_LEN, ETHERNET_ADDR_LEN);
         gnrc_netif_hdr_set_src_addr(netif_hdr->data, hdr->src, ETHERNET_ADDR_LEN);
         gnrc_netif_hdr_set_dst_addr(netif_hdr->data, hdr->dst, ETHERNET_ADDR_LEN);
-        ((gnrc_netif_hdr_t *)netif_hdr->data)->if_pid = thread_getpid();
+        ((gnrc_netif_hdr_t *)netif_hdr->data)->if_pid = netif->pid;
 
         DEBUG("gnrc_netif_ethernet: received packet from %02x:%02x:%02x:%02x:%02x:%02x "
               "of length %d\n",

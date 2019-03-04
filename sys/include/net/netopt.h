@@ -30,6 +30,14 @@ extern "C" {
 #endif
 
 /**
+ * @brief       A deprecated alias for @ref NETOPT_MAX_PDU_SIZE
+ *
+ * @deprecated  Please use @ref NETOPT_MAX_PDU_SIZE instead of
+ *              `NETOPT_MAX_PACKET_SIZE`
+ */
+#define NETOPT_MAX_PACKET_SIZE NETOPT_MAX_PDU_SIZE
+
+/**
  * @brief   Global list of configuration options available throughout the
  *          network stack, e.g. by netdev and netapi
  *
@@ -171,9 +179,9 @@ typedef enum {
      */
     NETOPT_TX_POWER,
     /**
-     * @brief   (uint16_t) maximum packet size a network module can handle
+     * @brief   (uint16_t) maximum protocol data unit
      */
-    NETOPT_MAX_PACKET_SIZE,
+    NETOPT_MAX_PDU_SIZE,
     /**
      * @brief   (@ref netopt_enable_t) frame preloading
      *
@@ -518,6 +526,13 @@ typedef enum {
      * @brief   (@ref netopt_enable_t) IQ inverted
      */
     NETOPT_IQ_INVERT,
+
+    /**
+     * @brief   (@ref netopt_enable_t) 6Lo support
+     *
+     * @see [RFC 4944](https://tools.ietf.org/html/rfc4944)
+     */
+    NETOPT_6LO,
 
     /**
      * @brief   (@ref netopt_enable_t) header compression

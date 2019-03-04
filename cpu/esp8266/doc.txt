@@ -1,5 +1,5 @@
 /**
-@defgroup        cpu_esp8266 ESP8266 / ESP8285 MCU
+@defgroup        cpu_esp8266 ESP8266 / ESP8285
 @ingroup         cpu
 @brief           RIOT-OS port for Espressif's ESP8266 / ESP8285 MCUs
 
@@ -17,6 +17,7 @@
     1. [Toolchain Usage](#esp8266_toolchain_usage)
     2. [Compile Options](#esp8266_compile_options)
     3. [Flash Modes](#esp8266_flash_modes)
+    4. [Erasing the Device](#esp8266_erasing)
 5. [Peripherals](#esp8266_peripherals)
     1. [GPIO pins](#esp8266_gpio_pins)
     2. [ADC Channels](#esp8266_adc_channels)
@@ -26,14 +27,17 @@
     6. [Timers](#esp8266_timers)
     7. [SPIFFS Device](#esp8266_spiffs_device)
     8. [Other Peripherals](#esp8266_other_peripherals)
-6. [Preconfigured Devices](#esp8266_preconfigured_devices)
+6. [Network Interfaces](#esp8266_network_interfaces)
+    1. [WiFi Network Interface](#esp8266_wifi_network_interface)
+    2. [ESP-NOW Network Interface](#esp8266_esp_now_network_interface)
+7. [Preconfigured Devices](#esp8266_preconfigured_devices)
     1. [Network Devices](#esp8266_network_devices)
     2. [SD-Card Device](#esp8266_sd_card_device)
-7. [Application-Specific Configurations](#esp8266_application_specific_configurations)
+8. [Application-Specific Configurations](#esp8266_application_specific_configurations)
     1. [Application-Specific Board Configuration](#esp8266_application_specific_board_configuration)
     2. [Application-Specific Driver Configuration](#esp8266_application_specific_driver_configuration)
-8. [SDK Task Handling](#esp8266_sdk_task_handling)
-9. [QEMU Mode and GDB](#esp8266_qemu_mode_and_gdb)
+9. [SDK Task Handling](#esp8266_sdk_task_handling)
+10. [QEMU Mode and GDB](#esp8266_qemu_mode_and_gdb)
 
 # <a name="esp8266_overview"> Overview </a> &nbsp;&nbsp; [[TOC](#esp8266_toc)]
 
@@ -100,7 +104,7 @@ You have the following options to install the Toolchain:
 
 ## <a name="esp8266_riot_docker_toolchain"> RIOT Docker Toolchain (riotdocker) </a> &nbsp;[[TOC](#esp8266_toc)]
 
-The easiest use the toolchain is Docker.
+The easiest way to use the toolchain is Docker.
 
 ### <a name="esp8266_preparing_the_environment"> Preparing the Environment </a> &nbsp;[[TOC](#esp8266_toc)]
 
@@ -339,23 +343,36 @@ Option | Values | Default | Description
 -------|--------|---------|------------
 ENABLE_GDB | 0, 1 | 0 | Enable compilation with debug information for debugging with QEMU (```QEMU=1```), see section [QEMU Mode and GDB](#esp8266_qemu_mode_and_gdb)
 FLASH_MODE | dout, dio, qout, qio | dout | Set the flash mode, please take care with your module, see section [Flash Modes](#esp8266_flash_modes)
-NETDEV_DEFAULT | module name | mrf24j40 | Set the module that is used as default network device, see section [Network Devices](#esp8266_network_devices)
-PORT | /dev/ttyUSBx | /dev/ttyUSB0 | Set the USB port for flashing the firmware
+PORT | /dev/ttyUSBx | /dev/* | Set the USB port for flashing the firmware
 QEMU | 0, 1 | 0 | Generate an image for QEMU, see section [QEMU Mode and GDB](#esp8266_qemu_mode_and_gdb).
 USE_SDK | 0, 1 | 0 | Compile the SDK version (```USE_SDK=1```), see section [SDK Task Handling](#esp8266_sdk_task_handling)
 
 </center><br>
 
-Optional features of ESP8266 can be enable by ```USEMODULE``` definitions in the makefile of the application. These are:
+Optional features of ESP8266 can be enabled by ```USEMODULE``` definitions in the makefile of the application. These are:
 
 <center>
 
 Module | Description
 -------|------------
-esp_spiffs | Enables the SPIFFS file system, see section [SPIFFS Device](#esp8266_spiffs_device)
-esp_sw_timer | Enables software timer implementation, implies the setting ```USE_SDK=1```, see section [Timers](#esp8266_timers)
+[esp_gdb](#esp8266_qemu_mode_and_gdb) | Enable the compilation with debug information, which is equivalent to using ```ENABLE_GDB=1```
+[esp_now](#esp8266_esp_now_network_interface) | Enable the built-in WiFi module with the ESP-NOW protocol as `netdev` network device
+[esp_sdk](#esp8266_sdk_task_handling) | Enable the SDK version, which is equivalent to using ```USE_SDK=1```
+[esp_spiffs](#esp8266_spiffs_device) | Enable the SPIFFS drive in on-board flash memory
+[esp_sw_timer](#esp8266_timers) | Enable software timer implementation, implies the setting ```USE_SDK=1``` (module ```esp_sdk```)
+[esp_wifi](#esp8266_wifi_network_interface) | Use the built-in WiFi module as `netdev` network device
 
 </center><br>
+
+For example, to activate the SPIFFS drive in on-board flash memory, the makefile of application has simply to add the ```esp_spiffs``` module to ```USEMODULE``` make variable:
+```
+USEMODULE += esp_spiffs
+```
+
+Modules can also be activated temporarily at the command line when calling the make command:
+```
+USEMODULE="esp_spiffs" make BOARD=...
+```
 
 ## <a name="esp8266_flash_modes"> Flash Modes </a> &nbsp;[[TOC](#esp8266_toc)]
 
@@ -366,6 +383,33 @@ The flash mode determines whether 2 data lines (```dio``` and ```dout```) or 4 d
 For more information about these flash modes, refer the documentation of [esptool.py](https://github.com/espressif/esptool/wiki/SPI-Flash-Modes).
 
 @note While ESP8266 modules can be flashed with ```qio```, ```qout```, ```dio``` and ```dout```, ESP8285 modules have to be always flashed in ```dout``` mode. The default flash mode is ```dout```.
+
+## <a name="esp8266_erasing"> Erasing the Device </a> &nbsp;[[TOC](#esp8266_toc)]
+
+The flash memory of ESP8266 can be erased completely with following command:
+```
+esptool.py erase_flash
+```
+
+@note After deleting the flash, the default init data must be rewritten. In a non-SDK version, this will happen automatically when RIOT is started for the first time after flashing the image. In the SDK version, this must be done explicitly. There are two possible approaches to rewriting standard initialization data:
+
+- Flash and start a non-SDK image before the SDK version is flashed.
+- Use the esptool.py file to update the default init data as following.
+
+```
+esptool.py write_flash <address> $RIOTBASE/cpu/esp8266/bin/esp_init_data_default.bin
+```
+
+where ```address``` depends on ESP8266 chip version.
+
+Chip version | ```address``` | Module examples
+------------ | ------------- | ----------------
+512 kByte | 0x07c000 | ESP-01, ESP-03, ESP-07, etc.
+1 MByte   | 0x0fc000 | ESP8285-based modules like Wemos D1 mini lite, PSF-A85, some ESP-01, ESP-03 etc.
+2 MByte   | 0x1fc000 | |
+4 MByte   | 0x3fc000 | ESP-12E, NodeMCU devkit 1.0, WeMos D1 mini
+8 MByte   | 0x7fc000 | |
+16 MByte  | 0xffc000 | WeMos D1 mini pro (USE 0x07c000!)
 
 
 # <a name="esp8266_peripherals"> Peripherals </a> &nbsp;[[TOC](#esp8266_toc)]
@@ -504,7 +548,7 @@ The software timer uses SDK's software timers to implement the timer channels. A
 
 ## <a name="esp8266_spiffs_device"> SPIFFS Device </a> &nbsp;[[TOC](#esp8266_toc)]
 
-If SPIFFS module is enabled (```USE_SPIFFS=1```), the implemented MTD device ```mtd0``` for the on-board SPI flash memory is used together with modules ```spiffs``` and ```vfs``` to realize a persistent file system.
+If SPIFFS module is enabled (```USEMODULE += esp_spiffs```), the implemented MTD system drive ```mtd0``` for the on-board SPI flash memory is used together with modules ```spiffs``` and ```vfs``` to realize a persistent file system.
 
 For this purpose, the flash memory is formatted as SPIFFS starting at the address ```0x80000``` (512 kByte) on first boot. All sectors up to the last 5 sectors of the flash memory are then used for the file system. With a fixed sector size of 4096 bytes, the top address of the SPIFF is ```flash_size - 5 * 4096```, e.g., ```0xfb000``` for a flash memory of 1 MByte. The size of the SPIFF then results from:
 ```
@@ -524,90 +568,171 @@ The ESP8266 port of RIOT also supports
 
 RTC is not yet implemented.
 
+# <a name="esp8266_network_interfaces"> Network Interfaces </a> &nbsp;[[TOC](#esp8266_toc)]
+
+ESP8266 provides different built-in possibilities to realize network devices:
+
+- <b>ESP WiFi</b>, usual AP-based wireless LAN (not yet supported)
+- <b>ESP-NOW</b>, a WiFi based AP-less and connectionless peer to peer communication protocol
+
+\anchor esp8266_wifi_network_interface
+## <a name="esp8266_wifi_network_interface"> WiFi Network Interface </a> &nbsp;[[TOC](#esp8266_toc)]
+
+The RIOT port for ESP8266 implements in module `esp_wifi` a `netdev` driver for
+the built-in WiFi interface.
+
+@note Due to symbol conflicts with the `crypto` and `hash` modules of RIOT
+in vendor library `libwpa.so`, which is required by module
+`esp_wifi`, `esp_wifi` cannot be used for applications that use these modules.
+Therefore, module `esp_wifi` is not automatically enabled when module
+`netdev_default` is used. Instead, if necessary, the application has to add
+the module `esp_wifi` in the Makefile.
+
+```
+USEMODULE += esp_wifi
+```
+
+Furthermore, the following configuration parameters have to be defined:
+
+<center>
+
+Parameter          | Default                   | Description
+:------------------|:--------------------------|:------------
+ESP_WIFI_SSID      | "RIOT_AP"                 | SSID of the AP to be used.
+ESP_WIFI_PASS      | "ThisistheRIOTporttoESP"  | Passphrase used for the AP as clear text (max. 64 chars).
+ESP_WIFI_STACKSIZE | #THREAD_STACKSIZE_DEFAULT |Stack size used for the WiFi netdev driver thread.
+
+</center>
+
+These configuration parameter definitions, as well as enabling the `esp_wifi`
+module, can be done either in the makefile of the project or at make command
+line, e.g.:
+
+```
+USEMODULE=esp_wifi \
+CFLAGS='-DESP_WIFI_SSID=\"MySSID\" -DESP_WIFI_PASS=\"MyPassphrase\"' \
+make -C examples/gnrc_networking BOARD=...
+```
+
+@note The Wifi network interface (module `esp_wifi`) and the
+[ESP-NOW network interface](#esp8266_esp_now_network_interface)
+(module `esp_now`) can be used simultaneously, for example, to realize a
+border router for a mesh network which uses ESP-NOW.
+
+\anchor esp8266_esp_now_network_interface
+## <a name="esp8266_esp_now_network_interface"> ESP-NOW Network Interface </a> &nbsp;[[TOC](#esp8266_toc)]
+
+With ESP-NOW, the ESP8266 provides a connectionless communication technology,
+featuring short packet transmission. It applies the IEEE802.11 Action Vendor
+frame technology, along with the IE function developed by Espressif, and CCMP
+encryption technology, realizing a secure, connectionless communication solution.
+
+The RIOT port for ESP8266 implements in module `esp_now` a `netdev` driver
+which uses ESP-NOW to provide a link layer interface to a meshed network of
+ESP8266 nodes. In this network, each node can send short packets with up to
+250 data bytes to all other nodes that are visible in its range.
+
+@note Due to symbol conflicts in vendor library `libwpa.so` used by the
+`esp_now` with RIOT's `crypto` and `hashes` modules, ESP-NOW cannot be used
+for application that use these modules. Therefore, the module `esp_now` is
+not enabled automatically if the `netdev_default` module is used. Instead,
+the application has to add the `esp_now` module in its makefile when needed.<br>
+```
+USEMODULE += esp_now
+```
+
+For ESP-NOW, ESP8266 nodes are used in WiFi SoftAP + Station mode to advertise
+their SSID and become visible to other ESP8266 nodes. The SSID of an ESP8266
+node is the concatenation of the prefix `RIOT_ESP_` with the MAC address of
+its SoftAP WiFi interface. The driver periodically scans all visible ESP8266
+nodes.
+
+The following parameters are defined for ESP-NOW nodes. These parameters can
+be overriden by [application-specific board configurations](#esp8266_application_specific_board_configuration).
+
+<center>
+
+Parameter | Default | Description
+:---------|:--------|:-----------
+ESP_NOW_SCAN_PERIOD | 10000000UL | Defines the period in us at which an node scans for other nodes in its range. The default period is 10 s.
+ESP_NOW_SOFT_AP_PASS | "ThisistheRIOTporttoESP" | Defines the passphrase as clear text (max. 64 chars) that is used for the SoftAP interface of ESP-NOW nodes. It has to be same for all nodes in one network.
+ESP_NOW_CHANNEL | 6 | Defines the channel that is used as the broadcast medium by all nodes together.
+ESP_NOW_KEY | NULL | Defines a key that is used for encrypted communication between nodes. If it is NULL, encryption is disabled. The key has to be of type ```uint8_t[16]``` and has to be exactly 16 bytes long.
+
+</center>
+
+@note The ESP-NOW network interface (module `esp_now`) and the
+[Wifi network interface](#esp8266_wifi_network_interface) (module `esp_wifi`)
+can be used simultaneously, for example, to realize a border router for
+a mesh network which uses ESP-NOW.
+
 # <a name="esp8266_preconfigured_devices"> Preconfigured Devices </a> &nbsp;[[TOC](#esp8266_toc)]
 
 The ESP8266 port of RIOT has been tested with several common external devices that can be connected to ESP8266 boards and are preconfigured accordingly.
 
 ## <a name="esp8266_network_devices"> Network Devices </a> &nbsp;[[TOC](#esp8266_toc)]
 
-RIOT provides a number of driver modules for different types of network devices, e.g., IEEE 802.15.4 radio modules and Ethernet modules. The RIOT ESP8266 port has been tested with the following network devices and is preconfigured to create RIOT network applications with these devices:
+RIOT provides a number of driver modules for different types of network devices, e.g., IEEE 802.15.4 radio modules and Ethernet modules. The RIOT port for ESP8266 has been tested with the following network devices:
 
-- [mrf24j40](http://riot-os.org/api/group__drivers__mrf24j40.html) (driver for Microchip MRF24j40 based IEEE 802.15.4
-- [enc28j60](http://riot-os.org/api/group__drivers__enc28j60.html) (driver for Microchip ENC28J60 based Ethernet modules)
-
-If the RIOT network application uses a default network device (module ```netdev_default```), the ```NETDEV_DEFAULT``` make command variable can be used to define the device that will be used as the default network device. The value of this variable must match the name of the driver module for this network device. If ```NETDEV_DEFAULT``` is not defined, the ```mrf24j40```  module is used as default network device.
+- [mrf24j40](https://riot-os.org/api/group__drivers__mrf24j40.html) (driver for Microchip MRF24j40 based IEEE 802.15.4
+- [enc28j60](https://riot-os.org/api/group__drivers__enc28j60.html) (driver for Microchip ENC28J60 based Ethernet modules)
 
 ### <a name="esp8266_using_mrf24j40"> Using MRF24J40 (module ```mrf24j40```) </a> &nbsp;[[TOC](#esp8266_toc)]
 
-To use MRF24J40 based IEEE 802.15.4 modules as network device, module ```mrf24j40``` has to be added to a makefile:
+To use MRF24J40 based IEEE 802.15.4 modules as network device, the ```mrf24j40``` driver module has to be added to the makefile of the application:
 
 ```
 USEMODULE += mrf24j40
 ```
 
-@note If module ```netdev_default``` is used (which is usually the case in all networking applications), module ```mrf24j40``` is added automatically.
-
-Module ```mrf24j40``` uses the following interface parameters by default:
+The ```mrf24j40``` driver module uses the following preconfigured interface parameters for ESP8266 boards:
 
 <center>
 
 Parameter              | Default      | Remarks
 -----------------------|--------------|----------------------------
-MRF24J40_PARAM_SPI     | SPI_DEV(0)   | fix, see section [SPI Interfaces](#esp8266_spi_interfaces)
-MRF24J40_PARAM_SPI_CLK | SPI_CLK_1MHZ | fix
+MRF24J40_PARAM_SPI     | SPI_DEV(0)   | fixed, see section [SPI Interfaces](#esp8266_spi_interfaces)
+MRF24J40_PARAM_SPI_CLK | SPI_CLK_1MHZ | fixed
 MRF24J40_PARAM_CS      | GPIO16       | can be overridden
 MRF24J40_PARAM_INT     | GPIO0        | can be overridden
 MRF24J40_PARAM_RESET   | GPIO2        | can be overridden
 
 </center><br>
 
-Used GPIOs can be overridden by corresponding make command variables, e.g,:
-```
-make flash BOARD=esp8266-esp-12x -C examples/gnrc_networking MRF24J40_PARAM_CS=GPIO15
-```
-or by an [application-specific board configuration](#esp8266_application_specific_board_configuration).
+The GPIOs in this configuration can be overridden by [application-specific board configurations](#esp8266_application_specific_board_configuration).
 
 ### <a name="esp8266_using_enc28j60"> Using ENC28J60 (module ```enc28j60```) </a> &nbsp;[[TOC](#esp8266_toc)]
 
-To use ENC28J60 Ethernet modules as network device, module ```enc28j60``` has to be added to your makefile:
+To use ENC28J60 Ethernet modules as network device, the ```enc28j60``` driver module has to be added to the makefile of the application:
 
 ```
 USEMODULE += enc28j60
 ```
 
-Module ```enc28j60``` uses the following interface parameters by default:
+The ```enc28j60``` driver module uses the following preconfigured interface parameters for ESP8266 boards:
 
 <center>
 
 Parameter            | Default      | Remarks
 ---------------------|--------------|----------------------------
-ENC28J60_PARAM_SPI   | SPI_DEV(0)   | fix, see section [SPI Interfaces](#esp8266_spi_interfaces)
+ENC28J60_PARAM_SPI   | SPI_DEV(0)   | fixed, see section [SPI Interfaces](#esp8266_spi_interfaces)
 ENC28J60_PARAM_CS    | GPIO4        | can be overridden
 ENC28J60_PARAM_INT   | GPIO9        | can be overridden
 ENC28J60_PARAM_RESET | GPIO10       | can be overridden
 
 </center>
 
-Used GPIOs can be overridden by corresponding make command variables, e.g.:
-```
-make flash BOARD=esp8266-esp-12x -C examples/gnrc_networking ENC28J60_PARAM_CS=GPIO15
-```
-or by an [application-specific board configuration](#esp8266_application_specific_board_configuration).
-
-To use module ```enc28j60``` as default network device, the ```NETDEV_DEFAULT``` make command variable has to set, for example:
-```
-make flash BOARD=esp8266-esp-12x -C examples/gnrc_networking NETDEV_DEFAULT=enc28j60
-```
+The GPIOs in this configuration can be overridden by [application-specific board configurations](#esp8266_application_specific_board_configuration).
 
 ## <a name="esp8266_sd_card_device"> SD-Card Device </a> &nbsp;[[TOC](#esp8266_toc)]
 
-ESP8266 port of RIOT is preconfigured for RIOT applications that use the [SPI SD-Card driver](http://riot-os.org/api/group__drivers__sdcard__spi.html). To use SPI SD-Card driver, the ```sdcard_spi``` module has to be added to a makefile:
+ESP8266 port of RIOT is preconfigured for RIOT applications that use the [SPI SD-Card driver](https://riot-os.org/api/group__drivers__sdcard__spi.html). To use SPI SD-Card driver, the ```sdcard_spi``` module has to be added to a makefile:
 
 ```
 USEMODULE += sdcard_spi
 ```
 
-Module ```sdcard_spi``` uses the following interface parameters by default:
+The ```sdcard_spi``` driver module uses the following preconfigured interface parameters for ESP8266 boards:
 
 <center>
 
@@ -618,22 +743,19 @@ SDCARD_SPI_PARAM_CS    | SPI0_CS0_GPIO | can be overridden
 
 </center>
 
-The GPIO used as CS signal can be overridden by an [application-specific board configuration](#esp8266_application_specific_board_configuration).
+The GPIO used as CS signal can be overridden by [application-specific board configurations](#esp8266_application_specific_board_configuration).
 
-# <a name="esp8266_application_specific_configurations"> Application-Specific Configurations </a> &nbsp;[[TOC](#esp8266_toc)]
-
-Configuration used for peripheral devices and for device driver modules, such as GPIO pins, bus interfaces or bus speeds are typically defined in the board-specific configurations ```board.h``` and ```periph_conf.h``` or in the driver parameter configuration ```< driver>_params.h```. Most of these definitions are enclosed by
-```
-#ifndef ANY_PARAMETER
-...
-#endif
-```
-constructs, so it is possible to override them by defining them in front of these constructs.
 
 \anchor esp8266_app_spec_conf
+# <a name="esp8266_application_specific_configurations"> Application-Specific Configurations </a> &nbsp;[[TOC](#esp8266_toc)]
+
+The board-specific configuration files ```board.h``` and ```periph_conf.h``` as well as the driver parameter configuration files ```<driver>_params.h``` define the default configurations for peripherals and device driver modules. These are, for example, the GPIOs used, bus interfaces used or available bus speeds. Because there are many possible configurations and many different application requirements, these default configurations are usually only a compromise between different requirements.
+
+Therefore, it is often necessary to change some of these default configurations for individual applications. For example, while many PWM channels are needed in one application, another application does not need PWM channels, but many ADC channels.
+
 ## <a name="esp8266_application_specific_board_configuration"> Application-Specific Board Configuration </a> &nbsp;[[TOC](#esp8266_toc)]
 
-To override standard board configurations, simply create an application-specific board configuration file ```$APPDIR/board.h``` in the source directory of the application ```$APPDIR``` and add the definitions to be overridden. To force the preprocessor to include board's original ```board.h``` after that, add the ```include_next``` preprocessor directive as the **last** line.
+To override default board configurations, simply create an application-specific board configuration file ```$APPDIR/board.h``` in the source directory ```$APPDIR``` of the application and add the definitions to be overridden. To force the preprocessor to include board's original ```board.h``` after that, add the ```include_next``` preprocessor directive as the <b>last</b> line.
 
 For example to override the default definition of the GPIOs that are used as PWM channels, the application-specific board configuration file ```$APPDIR/board.h``` could look like the following:
 ```
@@ -644,24 +766,25 @@ For example to override the default definition of the GPIOs that are used as PWM
 #include_next "board.h"
 ```
 
-To make such application-specific board configurations dependent on the ESP8266 MCU or a particular ESP8266 card, you should always enclose these definitions in the following constructs:
+It is important to ensure that the application-specific board configuration ```$APPDIR/board.h``` is included first. Insert the following line as the <b>first</b> line to the application makefile ```$APPDIR/Makefile```.
+```
+INCLUDES += -I$(APPDIR)
+```
+
+@note To make such application-specific board configurations dependent on the ESP8266 MCU or a particular ESP8266 board, you should always enclose these definitions in the following constructs
 ```
 #ifdef CPU_ESP8266
 ...
 #endif
 
-#ifdef BOARD_ESP8266_ESP_12X
+#ifdef BOARD_ESP8266_ESP-12X
 ...
 #endif
-```
-To ensure that the application-specific board configuration ```$APPDIR/board.h``` is included first, insert the following line as the **first** line to the application makefile ```$APPDIR/Makefile```.
-```
-INCLUDES += -I$(APPDIR)
 ```
 
 ## <a name="esp8266_application_specific_driver_configuration"> Application-Specific Driver Configuration </a> &nbsp;[[TOC](#esp8266_toc)]
 
-Using the approach for overriding board configurations, the parameters of drivers that are typically defined in ```drivers/<device>/include/<device>_params.h``` can also be overridden. For that purpose just create an application-specific driver parameter file ```$APPDIR/<device>_params.h``` in the source directory ```$APPDIR``` of the application and add the definitions to be overridden. To force the preprocessor to include driver's original ```<device>_params.h``` after that, add the ```include_next``` preprocessor directive as the **last** line.
+Using the approach for overriding board configurations, the parameters of drivers that are typically defined in ```drivers/<device>/include/<device>_params.h``` can be overridden. For that purpose just create an application-specific driver parameter file ```$APPDIR/<device>_params.h``` in the source directory ```$APPDIR``` of the application and add the definitions to be overridden. To force the preprocessor to include driver's original ```<device>_params.h``` after that, add the ```include_next``` preprocessor directive as the <b>last</b> line.
 
 For example, to override a GPIO used for LIS3DH sensor, the application-specific driver parameter file ```$APPDIR/<device>_params.h``` could look like the following:
 ```
@@ -671,36 +794,68 @@ For example, to override a GPIO used for LIS3DH sensor, the application-specific
 
 #include_next "lis3dh_params.h"
 ```
-To make such application-specific board configurations dependent on the ESP8266 MCU or a particular ESP8266 card, you should always enclose these definitions in the following constructs:
+
+It is important to ensure that the application-specific driver parameter file ```$APPDIR/<device>_params.h``` is included first. Insert the following line as the <b>first</b> line to the application makefile ```$APPDIR/Makefile```.
+```
+INCLUDES += -I$(APPDIR)
+```
+
+**Pleae note:** To make such application-specific board configurations dependent on the ESP8266 MCU or a particular ESP8266 board, you should always enclose these definitions in the following constructs:
 ```
 #ifdef CPU_ESP8266
 ...
 #endif
 
-#ifdef BOARD_ESP8266_ESP_12X
+#ifdef BOARD_ESP8266_ESP-12X
 ...
 #endif
-```
-To ensure that the application-specific driver parameter file ```$APPDIR/<device>_params.h``` is included first, insert the following line as the **first** line to the application makefile ```$APPDIR/Makefile```.
-```
-INCLUDES += -I$(APPDIR)
 ```
 
 # <a name="esp8266_sdk_task_handling"> SDK Task Handling </a> &nbsp;[[TOC](#esp8266_toc)]
 
-With make command variable ```USE_SDK=1``` the Espressif SDK is used. This is necessary, for example, if you want to use the built-in WLAN module. The SDK internally uses its own tasks (SDK tasks) and its own scheduling mechanism to realize event-driven SDK functions such as WiFi functions and software timers, and to keep the system alive. For this purpose, the SDK regularly executes SDK tasks with pending events in an endless loop using the ROM function ```ets_run```.
+With make command variable `USE_SDK=1`, the Espressif SDK is used. This is
+necessary, for example, if you want to use the built-in WLAN module. The
+SDK is also used automatically when software timers are used by activating
+the `esp_sw_timer` module.
 
-Interrupt service routines do not process interrupts directly but use the ```ets_post``` ROM function to send an event to one of these SDK tasks, which then processes the interrupts asynchronously. A context switch is not possible in the interrupt service routines.
+Internally, the SDK uses its own priority-based multitasking sytsem,
+the **ETS**, to handle hardware components such as the WiFi interface, or to
+implement event-driven functions such as software timers. ETS periodically
+executes all ETS tasks with pending events in an infinite loop with the ROM
+function `ets_run`.
 
-In the RIOT port, the task management of the SDK is replaced by the task management of the RIOT. To handle SDK tasks with pending events so that the SDK functions work and the system keeps alive, the ROM functions ```ets_run``` and ```ets_post``` are overwritten. The ```ets_run``` function performs all SDK tasks with pending events exactly once. It is executed at the end of the ```ets_post``` function and thus usually at the end of an SDK interrupt service routine or before the system goes into the lowest power mode.
+ETS doesn't process interrupts directly in interrupt service routines.
+Instead, they use the `ets_post` ROM function to send an event to one of the
+ETS tasks, which then processes the interrupts asynchronously. Context
+switches are not possible in interrupt service routines.
 
-@note Since the non-SDK version of RIOT is much smaller and faster than the SDK version, you should always compile your application without the SDK (```USE_SDK=0```, the default) if you don't need the built-in WiFi module.
+To use SDK functions and keep the system alive, ETS tasks with pending events
+have to be handled. For that purpose
+
+- the `ets_task_func` RIOT thread with highest possible priority is used
+- the ROM functions `ets_run` and `ets_post` are overwritten.
+
+The `ets_task_func` RIOT thread is waiting for a thread flag, which is set
+by the `ets_post` function at the end of an ETS interrupt service routine.
+The flag indicates that there are ETS tasks with pending events that need
+to be executed. The `ets_task_func` RIOT thread then calls the `ets_run`
+function, which performs all ETS tasks with pending events exactly once.
+
+Thus, when a hardware component used by the SDK triggers an interrupt, e.g.
+the WiFi interface, the interrupt sevice routine posts an event to the ETS
+task by calling the `ets_post` function. The overwritten version of this
+function sets the thread flag of the `ets_task_func` thread. The thread
+then calls function `ets_run` to process pending events.
+
+@note Since the non-SDK version of RIOT is much smaller and faster than the
+SDK version, you should always compile your application without the SDK
+(```USE_SDK=0```, the default) if you don't need the built-in WiFi module.
 
 # <a name="esp8266_qemu_mode_and_gdb"> QEMU Mode and GDB </a> &nbsp;[[TOC](#esp8266_toc)]
 
 When QEMU mode is enabled (```QEMU=1```), instead of loading the image to the target hardware, a binary image ```$ELFFILE.bin``` is created in the target directory. This binary image file can be used together with QEMU to debug the code in GDB.
 
-The binary image can be compiled with debugging information (```ENABLE_GDB=1```) or optimized without debugging information (```ENABLE_GDB=0```). The latter one is the default. The version with debugging information can be debugged in source code while the optimized version can only be debugged in assembler mode.
+The binary image can be compiled with debugging information (```ENABLE_GDB=1``` or module ```esp_gdb```) or optimized without debugging information (```ENABLE_GDB=0```). The latter one is the default. The version with debugging information can be debugged in source code while the optimized version can only be debugged in assembler mode.
 
 To use QEMU, you have to install QEMU for Xtensa with ESP8266 machine implementation as following.
 
@@ -737,4 +892,5 @@ To start debugging, you have to connect to QEMU with command:
 ```
 (gdb) target remote :1234
 ```
+
 */
