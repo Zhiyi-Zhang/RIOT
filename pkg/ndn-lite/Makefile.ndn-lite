@@ -1,6 +1,7 @@
 MODULE = ndn-lite
 
-DIRS += encode face forwarder security app-support
+DIRS += encode face forwarder security app-support util
+DIRS += encode/trust-schema
 DIRS += security/detail/default-backend
 DIRS += security/detail/default-backend/sec-lib/micro-ecc
 DIRS += security/detail/default-backend/sec-lib/tinycrypt
