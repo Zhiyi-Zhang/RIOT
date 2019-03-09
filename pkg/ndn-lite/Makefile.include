@@ -1,5 +1,6 @@
 INCLUDES += -I$(PKGDIRBASE)
 USEMODULE += ndn-encode
+USEMODULE += ndn-util
 USEMODULE += ndn-app-support
 USEMODULE += ndn-face
 USEMODULE += ndn-forwarder
