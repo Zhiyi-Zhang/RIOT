@@ -1,6 +1,10 @@
 INCLUDES += -I$(PKGDIRBASE)
 USEMODULE += ndn-encode
+<<<<<<< HEAD
 USEMODULE += ndn-util
+=======
+USEMODULE += ndn-trust-schema
+>>>>>>> 3aeb15adb3d85e2302ece080c8e2c472242e4b77
 USEMODULE += ndn-app-support
 USEMODULE += ndn-face
 USEMODULE += ndn-forwarder
@@ -8,3 +12,4 @@ USEMODULE += ndn-security
 USEMODULE += ndn-security-detail-default-backend
 USEMODULE += ndn-security-micro-ecc
 USEMODULE += ndn-security-tinycrypt
+USEMODULE += ndn-util
