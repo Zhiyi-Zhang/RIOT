@@ -115,7 +115,11 @@ typedef enum {
                                      chunk */
 #endif
 
-#if (!defined MODULE_NDN_RIOT) || (defined MODULE_NDN_LITE)
+#ifdef MODULE_NDN_RIOT
+    GNRC_NETTYPE_NDN,           /**< Protocol is NDN */
+#endif
+
+#ifdef MODULE_NDN_LITE
     GNRC_NETTYPE_NDN,           /**< Protocol is NDN */
 #endif
 

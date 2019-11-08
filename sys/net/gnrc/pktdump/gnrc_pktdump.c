@@ -106,7 +106,13 @@ static void _dump_snip(gnrc_pktsnip_t *pkt)
             printf("Content is: %.*s\n", (int)pkt->size, (char*)pkt->data);
             break;
 #endif
-#if (!defined MODULE_NDN_RIOT) || (defined MODULE_NDN_LITE)
+#ifdef MODULE_NDN_RIOT
+    case GNRC_NETTYPE_NDN:
+            printf("NETTYPE_NDN (%i)\n", pkt->type);
+            od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+        break;
+#endif
+#ifdef MODULE_NDN_LITE
     case GNRC_NETTYPE_NDN:
             printf("NETTYPE_NDN (%i)\n", pkt->type);
             od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);

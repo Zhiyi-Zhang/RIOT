@@ -145,7 +145,7 @@ endif
 WERROR ?= 1
 export WERROR
 ifeq ($(WERROR),1)
-  CFLAGS += -Werror
+  # CFLAGS += -Werror
 endif
 
 WPEDANTIC ?= 0

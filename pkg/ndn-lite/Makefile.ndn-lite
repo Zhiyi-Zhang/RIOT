@@ -2,9 +2,8 @@ MODULE = ndn-lite
 
 DIRS += encode face forwarder security app-support util
 DIRS += encode/trust-schema
-DIRS += encode/light
-DIRS += security/detail/default-backend
-DIRS += security/detail/default-backend/sec-lib/micro-ecc
-DIRS += security/detail/default-backend/sec-lib/tinycrypt
+DIRS += security/default-backend
+DIRS += security/default-backend/sec-lib/micro-ecc
+DIRS += security/default-backend/sec-lib/tinycrypt
 
 include $(RIOTBASE)/Makefile.base

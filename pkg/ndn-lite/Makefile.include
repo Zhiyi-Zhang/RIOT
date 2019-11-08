@@ -1,6 +1,5 @@
 INCLUDES += -I$(PKGDIRBASE)
 USEMODULE += ndn-encode
-USEMODULE += ndn-encode-light
 USEMODULE += ndn-util
 USEMODULE += ndn-trust-schema
 USEMODULE += ndn-app-support
