@@ -21,6 +21,12 @@ ifneq (,$(filter ndn-riot,$(USEPKG)))
   USEPKG += micro-ecc
 endif
 
+ifneq (,$(filter ndn-lite,$(USEPKG)))
+  USEMODULE += gnrc
+  USEMODULE += xtimer
+  USEMODULE += random
+endif
+
 ifneq (,$(filter csma_sender,$(USEMODULE)))
   USEMODULE += random
   USEMODULE += xtimer

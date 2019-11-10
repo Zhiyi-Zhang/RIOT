@@ -301,7 +301,7 @@ void auto_init(void)
 /* initialize NDN module after the network devices are initialized */
 #ifdef MODULE_NDN_RIOT
     DEBUG("Auto init NDN module.\n");
-    ndn_init();
+   ndn_init();
 #endif
 
 /* initialize sensors and actuators */
